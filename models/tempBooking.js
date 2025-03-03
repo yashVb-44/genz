@@ -14,10 +14,16 @@ const tempBookingSchema = new mongoose.Schema({
     acceptTime: { type: Date, required: true }, // From Request model
     pickupTime: { type: Date }, // When user gets picked up
     dropTime: { type: Date }, // When user reaches destination
+    cancelTime: { type: Date }, // When user or driver cancels the ride
+    canceledBy: { type: String, enum: ["user", "driver"], default: null }, // Who canceled the ride
+    cancelReason: {
+        type: String,
+        default: null,
+    },
     distance: { type: Number, required: true }, // Distance in KM
     duration: { type: Number, required: true }, // Duration in minutes
     specialRequest: { type: String },
-    note: { type: String }
+    note: { type: String },
 }, { timestamps: true });
 
 module.exports = mongoose.model("TempBooking", tempBookingSchema);

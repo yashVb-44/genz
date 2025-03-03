@@ -163,3 +163,45 @@ exports.cleanExpiredRequests = async (io) => {
     await Request.deleteMany({ expiryTime: { $lt: now } });
 };
 
+exports.handleCancelRide = async (io, data) => {
+    try {
+        const { bookingId, driverId, userId, canceledBy, reason, cancelTime } = data;
+
+        if (!bookingId || !canceledBy) {
+            console.error("❌ Missing data in handleCancelRide:", data);
+            return;
+        }
+
+        // ✅ Mark driver as available if driverId exists
+        if (driverId) {
+            await Driver.findByIdAndUpdate(driverId, { isAvailableForRide: true, isOnRide: false });
+        }
+
+        // 🔔 WebSocket Notification Data
+        let notificationData = {
+            type: "rideCanceled",
+            message: `Ride has been canceled by the ${canceledBy}`,
+            bookingId,
+            canceledBy,
+            reason: reason || "",
+            cancelTime,
+        };
+
+        // Send to driver if user cancels
+        if (driverId && activeDrivers.has(driverId) && canceledBy === "user") {
+            io.to(activeDrivers.get(driverId)).emit("rideCanceled", notificationData);
+        }
+
+        // Send to user if driver cancels
+        if (userId && activeUsers.has(userId) && canceledBy === "driver") {
+            io.to(activeUsers.get(userId)).emit("rideCanceled", notificationData);
+        }
+        
+
+        console.log(`✅ Ride ${bookingId} canceled by ${canceledBy}`);
+
+    } catch (error) {
+        console.error("❌ Error in handleCancelRide:", error);
+        return;
+    }
+};

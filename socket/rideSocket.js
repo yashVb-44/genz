@@ -10,10 +10,14 @@ module.exports = function rideSocket(io) {
 
         // ✅ Store the rider's socket connection
         socket.on("registerRider", (data) => {
-            const { userId } = data;
-            if (userId) {
-                activeRiders.set(userId, socket.id);
-                console.log(`✅ Rider registered: ${userId} (Socket: ${socket.id})`);
+            try {
+                const { userId } = data;
+                if (userId) {
+                    activeRiders.set(userId, socket.id);
+                    console.log(`✅ Rider registered: ${userId} (Socket: ${socket.id})`);
+                }
+            } catch (error) {   
+                console.log("❌ Error in registerRider:", error); 
             }
         });
 

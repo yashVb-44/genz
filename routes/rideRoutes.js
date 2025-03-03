@@ -22,8 +22,8 @@ router.post("/reject", authenticateAndAuthorize(["driver"]), rejectRideRequest);
 
 // 🏁 Ride Lifecycle
 router.post("/start", authenticateAndAuthorize(["driver"]), startRide);
-router.post("/completes", authenticateAndAuthorize(["driver"]), completeRide);
-// router.post("/cancel-ride", authenticateAndAuthorize(["user", "driver"]), rideController.cancelRide);
+router.post("/complete", authenticateAndAuthorize(["driver"]), completeRide);
+router.post("/cancel", authenticateAndAuthorize(["user", "driver"]), cancelRide);
 
 // 📜 Booking History
 // router.get("/bookings", authenticateAndAuthorize(["user", "driver", "admin"]), rideController.getBookings);

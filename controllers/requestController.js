@@ -133,6 +133,7 @@ exports.rejectRideRequest = asyncHandler(async (req, res) => {
     }
 });
 
+// Get All the aviailable ride requests for a driver
 exports.getRideRequestsForDriver = async (req, res) => {
     try {
         const driverId = req.user.id; // Extract driver ID from authenticated request

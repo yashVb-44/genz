@@ -11,12 +11,16 @@ const bookingSchema = new mongoose.Schema({
     status: { type: String, enum: ["completed", "canceled"], required: true },
     requestTime: { type: Date, required: true },
     acceptTime: { type: Date, required: true },
-    pickupTime: { type: Date, required: true },
+    pickupTime: { type: Date },
     dropTime: { type: Date }, // Null if canceled
     cancelTime: { type: Date }, // When canceled (if applicable)
-    cancelReason: { type: String },
     distance: { type: Number, required: true }, // Distance in KM
     duration: { type: Number, required: true }, // Duration in minutes
+    canceledBy: { type: String, enum: ["user", "driver"], default: null }, // Who canceled the ride
+    cancelReason: {
+        type: String,
+        default: null,
+    },
     specialRequest: { type: String },
     note: { type: String }
 }, { timestamps: true });

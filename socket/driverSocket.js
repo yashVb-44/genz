@@ -15,10 +15,14 @@ module.exports = function driverSocket(io) {
 
         // ✅ Store the driver's socket connection
         socket.on("registerDriver", (data) => {
-            const { driverId } = data;
-            if (driverId) {
-                activeDrivers.set(driverId, { socketId: socket?.id });
-                console.log(`✅ Driver ${driverId} registered with socket ${socket.id}`);
+            try {
+                const { driverId } = data;
+                if (driverId) {
+                    activeDrivers.set(driverId, { socketId: socket?.id });
+                    console.log(`✅ Driver ${driverId} registered with socket ${socket.id}`);
+                }
+            } catch (error) {
+                console.log("❌ Error in registerDriver:", error);
             }
         });
 

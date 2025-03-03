@@ -1,6 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const TempBooking = require("../models/tempBooking");
 const Booking = require("../models/booking");
+const { handleCancelRide } = require("../utils/rider");
 
 // 🟢 Start the ride (Pickup)
 exports.startRide = asyncHandler(async (req, res) => {
@@ -92,45 +93,112 @@ exports.completeRide = asyncHandler(async (req, res) => {
 });
 
 // 🛑 Cancel the ride
-exports.cancelRide = asyncHandler(async (req, res) => {
+exports.cancelRide = async (req, res) => {
     try {
-        const { tempBookingId, cancelReason } = req.body;
+        const { id, role } = req.user;
+        const { tempBookingId, reason } = req.body;
 
-        if (!tempBookingId || !cancelReason) {
-            return res.status(400).json({ message: "Missing required parameters", type: "error" });
+        if (!tempBookingId) {
+            return res.status(400).json({
+                type: "error",
+                message: "Temp-Booking ID is required."
+            });
         }
 
-        const tempBooking = await TempBooking.findById(tempBookingId);
+        // Find the ride and populate user & driver
+        let tempBooking = await TempBooking.findById(tempBookingId).populate("user driver");
         if (!tempBooking) {
-            return res.status(400).json({ message: "Ride not found", type: "error" });
+            return res.status(404).json({
+                type: "error",
+                message: "Temp-Booking not found."
+            });
         }
 
+        // 🚫 Prevent duplicate cancellation
+        if (tempBooking.status === "canceled") {
+            return res.status(400).json({
+                type: "error",
+                message: "This ride has already been canceled."
+            });
+        }
+
+        // 🚫 Ensure user/driver exists before checking authorization
+        if (role === "user" && (!tempBooking.user || tempBooking.user._id.toString() !== id)) {
+            return res.status(403).json({
+                type: "error",
+                message: "You are not authorized to cancel this booking."
+            });
+        }
+
+        if (role === "driver" && (!tempBooking.driver || tempBooking.driver._id.toString() !== id)) {
+            return res.status(403).json({
+                type: "error",
+                message: "You are not authorized to cancel this booking."
+            });
+        }
+
+        // ❌ Restriction: Cannot cancel after ride has started
+        if (tempBooking.status === "started") {
+            return res.status(400).json({
+                type: "error",
+                message: "Ride cannot be canceled after pickup."
+            });
+        }
+
+        if (tempBooking.status === "completed") {
+            return res.status(400).json({
+                type: "error",
+                message: "Ride is already completed and cannot be canceled."
+            });
+        }
+
+        // ✅ Update status to canceled and log cancel details
         tempBooking.status = "canceled";
+        tempBooking.cancelReason = reason || "";
         tempBooking.cancelTime = new Date();
-        tempBooking.cancelReason = cancelReason;
+        tempBooking.canceledBy = role;
         await tempBooking.save();
 
+        // ✅ Store booking details with correct status
         const booking = new Booking({
             ...tempBooking.toObject(),
+            totalFare: tempBooking.fare,
             status: "canceled",
         });
 
         await booking.save();
-        await TempBooking.findByIdAndDelete(tempBookingId);
 
-        return res.status(200).json({
-            message: "Ride canceled successfully",
-            type: "success",
-            booking,
+        // ✅ Delete the temp booking
+        await tempBooking.deleteOne();
+
+        // 🔔 WebSocket Notification Setup
+        const io = req.app.get("io");
+        await handleCancelRide(io, {
+            bookingId: booking._id.toString(), // ✅ Use booking._id instead of tempBooking._id
+            driverId: booking.driver ? booking.driver._id.toString() : null,
+            userId: booking.user ? booking.user._id.toString() : null,
+            canceledBy: role,
+            reason: booking?.cancelReason, // ✅ Use booking.cancelReason
+            cancelTime: booking?.cancelTime  // ✅ Use booking.cancelTime
         });
+
+        res.status(200).json({
+            type: "success",
+            message: "Ride canceled successfully.",
+            bookingId: booking._id,
+            canceledBy: role,
+            cancelTime: tempBooking.cancelTime
+        });
+
     } catch (error) {
-        return res.status(500).json({
-            message: "Failed to cancel the ride",
-            error: error.message,
+        console.error("❌ Error canceling ride:", error);
+        res.status(500).json({
             type: "error",
+            message: "Error canceling ride.",
+            error: error.message
         });
     }
-});
+};
 
 exports.getUserTempBooking = async (req, res) => {
     try {
