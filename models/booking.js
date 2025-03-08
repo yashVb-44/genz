@@ -11,6 +11,7 @@ const bookingSchema = new mongoose.Schema({
     status: { type: String, enum: ["completed", "canceled"], required: true },
     requestTime: { type: Date, required: true },
     acceptTime: { type: Date, required: true },
+    arrivedTime: { type: Date }, // ✅ When driver arrives at pickup location
     pickupTime: { type: Date },
     dropTime: { type: Date }, // Null if canceled
     cancelTime: { type: Date }, // When canceled (if applicable)

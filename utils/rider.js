@@ -25,7 +25,7 @@ exports.handleNewRideRequest = async (io, data, socket) => {
             currentLocation: {
                 $near: {
                     $geometry: { type: "Point", coordinates: [longitude, latitude] },
-                    $maxDistance: 5000, // 5 km in meters
+                    $maxDistance: 5000000, // 5 km in meters
                 },
             },
             isOnline: true,
@@ -76,6 +76,7 @@ exports.handleAcceptRide = async (io, data, socket) => {
         console.log(`🚖 Driver ${driverId} accepted ride ${rideId}, notifying rider: ${userSocket}`);
 
         if (userSocket) {
+            console.log(`🚖 Notifying rider ${userSocket} that driver ${driverId} accepted ride ${rideId}`);
             io.of("/rides").to(userSocket).emit("rideAccepted", { driverId, rideId, tempBookingId });
         }
 
@@ -83,9 +84,12 @@ exports.handleAcceptRide = async (io, data, socket) => {
         if (activeRequests.has(rideId)) {
             activeRequests.get(rideId).forEach((otherDriverId) => {
                 if (otherDriverId !== driverId) {
-                    const driverSocket = activeDrivers.get(otherDriverId);
-                    if (driverSocket) {
-                        io.of("/drivers").to(driverSocket).emit("removeRideRequest", { rideId });
+                    const driverData = activeDrivers.get(otherDriverId); // Get the object
+                    if (driverData && driverData.socketId) {
+                        console.log(`🚫 Emitting to socket ID: ${driverData.socketId}`);
+                        io.of("/drivers").to(driverData.socketId).emit("removeRideRequest", { rideId });
+                    } else {
+                        console.log(`🚫 No valid socket ID for driver ${otherDriverId}`);
                     }
                 }
             });
@@ -120,9 +124,12 @@ exports.handleRejectRide = async (io, data, socket) => {
         }
 
         // Notify the rejecting driver
-        const driverSocket = activeDrivers.get(driverId);
-        if (driverSocket) {
-            io.of("/drivers").to(driverSocket).emit("removeRideRequest", { rideId });
+        const driverData = activeDrivers.get(driverId); // Get the object
+        if (driverData && driverData.socketId) {
+            console.log(`🚫 Emitting to socket ID: ${driverData.socketId}`);
+            io.of("/drivers").to(driverData.socketId).emit("removeRideRequest", { rideId });
+        } else {
+            console.log(`🚫 No valid socket ID for driver ${otherDriverId}`);
         }
 
         console.log(`❌ Driver ${driverId} rejected ride ${rideId}`);
@@ -149,9 +156,12 @@ exports.cleanExpiredRequests = async (io) => {
         // Notify drivers that the request expired
         if (activeRequests.has(rideId)) {
             activeRequests.get(rideId).forEach((driverId) => {
-                const driverSocket = activeDrivers.get(driverId);
-                if (driverSocket) {
-                    io.of("/drivers").to(driverSocket).emit("removeRideRequest", { rideId });
+                const driverData = activeDrivers.get(driverId); // Get the object
+                if (driverData && driverData.socketId) {
+                    console.log(`🚫 Emitting to socket ID: ${driverData.socketId}`);
+                    io.of("/drivers").to(driverData.socketId).emit("removeRideRequest", { rideId });
+                } else {
+                    console.log(`🚫 No valid socket ID for driver ${otherDriverId}`);
                 }
             });
 
@@ -189,19 +199,131 @@ exports.handleCancelRide = async (io, data) => {
 
         // Send to driver if user cancels
         if (driverId && activeDrivers.has(driverId) && canceledBy === "user") {
-            io.to(activeDrivers.get(driverId)).emit("rideCanceled", notificationData);
+            const driverData = activeDrivers.get(driverId); // Get the driver data object
+            if (driverData && driverData.socketId) {
+                io.to(driverData.socketId).emit("rideCanceled", notificationData);
+            } else {
+                console.log(`❌ No valid socket ID for driver ${driverId}`);
+            }
         }
 
         // Send to user if driver cancels
         if (userId && activeUsers.has(userId) && canceledBy === "driver") {
-            io.to(activeUsers.get(userId)).emit("rideCanceled", notificationData);
+            const userSocketId = activeUsers.get(userId); // Assuming activeUsers stores socketId directly
+            if (userSocketId) {
+                io.to(userSocketId).emit("rideCanceled", notificationData);
+            } else {
+                console.log(`❌ No valid socket ID for user ${userId}`);
+            }
         }
-        
 
         console.log(`✅ Ride ${bookingId} canceled by ${canceledBy}`);
 
     } catch (error) {
         console.error("❌ Error in handleCancelRide:", error);
         return;
+    }
+};
+
+exports.handleDriverArrived = async (io, data) => {
+    try {
+        const { tempBookingId, driverId, userId } = data;
+
+        if (!tempBookingId || !driverId || !userId) {
+            console.error("❌ Missing data in handleDriverArrived:", data);
+            return;
+        }
+
+        // 🔔 WebSocket Notification Data for User
+        let notificationData = {
+            type: "driverArrived",
+            message: "Your driver has arrived at the pickup location.",
+            tempBookingId,
+            driverId,
+        };
+
+        // Send notification to the user when the driver arrives
+        if (activeUsers.has(userId)) {
+            const userSocketId = activeUsers.get(userId); // activeUsers stores socketId directly
+            if (userSocketId) {
+                io.to(userSocketId).emit("driverArrived", notificationData);
+            } else {
+                console.log(`❌ No valid socket ID for user ${userId}`);
+            }
+        }
+
+        console.log(`✅ Driver ${driverId} has arrived for tempBooking ${tempBookingId}`);
+
+    } catch (error) {
+        console.error("❌ Error in handleDriverArrived:", error);
+    }
+};
+
+exports.handleStartRide = async (io, data) => {
+    try {
+        const { tempBookingId, driverId, userId } = data;
+
+        if (!tempBookingId || !driverId || !userId) {
+            console.error("❌ Missing data in handleStartRide:", data);
+            return;
+        }
+
+        // 🔔 WebSocket Notification Data for User
+        let notificationData = {
+            type: "rideStarted",
+            message: "Your ride has started.",
+            tempBookingId,
+            driverId,
+        };
+
+        // Send notification to the user when the ride starts
+        if (activeUsers.has(userId)) {
+            const userSocketId = activeUsers.get(userId);
+            if (userSocketId) {
+                io.to(userSocketId).emit("rideStarted", notificationData);
+            } else {
+                console.log(`❌ No valid socket ID for user ${userId}`);
+            }
+        }
+
+        console.log(`✅ Ride started for booking ${tempBookingId} by driver ${driverId}`);
+
+    } catch (error) {
+        console.error("❌ Error in handleStartRide:", error);
+    }
+};
+
+exports.handleCompleteRide = async (io, data) => {
+    try {
+        const { bookingId, driverId, userId, fare } = data;
+
+        if (!bookingId || !driverId || !userId || !fare) {
+            console.error("❌ Missing data in handleCompleteRide:", data);
+            return;
+        }
+
+        // 🔔 WebSocket Notification Data for User
+        let notificationData = {
+            type: "rideCompleted",
+            message: `Your ride has been completed. Total fare: ₹${fare}.`,
+            bookingId,
+            driverId,
+            totalFare: fare,
+        };
+
+        // Send notification to the user when the ride is completed
+        if (activeUsers.has(userId)) {
+            const userSocketId = activeUsers.get(userId);
+            if (userSocketId) {
+                io.to(userSocketId).emit("rideCompleted", notificationData);
+            } else {
+                console.log(`❌ No valid socket ID for user ${userId}`);
+            }
+        }
+
+        console.log(`✅ Ride completed for booking ${bookingId} by driver ${driverId}. Fare: ₹${fare}`);
+
+    } catch (error) {
+        console.error("❌ Error in handleCompleteRide:", error);
     }
 };

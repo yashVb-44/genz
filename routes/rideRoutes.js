@@ -2,7 +2,7 @@ const express = require("express");
 const { authenticateAndAuthorize } = require("../middleware/authMiddleware");
 const { getEstimateFare } = require("../controllers/fareController");
 const { acceptRideRequest, createRideRequest, rejectRideRequest, getRideRequestsForDriver } = require("../controllers/requestController");
-const { startRide, completeRide, cancelRide, getUserTempBooking } = require("../controllers/tempBookingController");
+const { startRide, completeRide, cancelRide, driverArrived } = require("../controllers/tempBookingController");
 
 const router = express.Router();
 
@@ -17,6 +17,7 @@ router.delete("/request/:id", authenticateAndAuthorize(["user"]), acceptRideRequ
 // 🚖 Temporary Bookings
 router.post("/accept", authenticateAndAuthorize(["driver"]), acceptRideRequest);
 router.post("/reject", authenticateAndAuthorize(["driver"]), rejectRideRequest);
+router.post("/driver/arrived", authenticateAndAuthorize(["driver"]), driverArrived);
 // router.get("/temp-bookings", authenticateAndAuthorize(["driver", "admin"]), rideController.getTempBookings);
 // router.delete("/temp-booking/:id", authenticateAndAuthorize(["driver"]), rideController.rejectRide);
 

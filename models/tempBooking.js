@@ -9,9 +9,10 @@ const tempBookingSchema = new mongoose.Schema({
     vehicleType: { type: String, required: true },
     paymentMethod: { type: String, required: true },
     otp: { type: String, required: true },
-    status: { type: String, enum: ["accepted", "started", "canceled", "completed"], default: "accepted" },
+    status: { type: String, enum: ["accepted", "arrived", "started", "canceled", "completed"], default: "accepted" },
     requestTime: { type: Date, required: true }, // From Request model
     acceptTime: { type: Date, required: true }, // From Request model
+    arrivedTime: { type: Date }, // ✅ When driver arrives at pickup location
     pickupTime: { type: Date }, // When user gets picked up
     dropTime: { type: Date }, // When user reaches destination
     cancelTime: { type: Date }, // When user or driver cancels the ride

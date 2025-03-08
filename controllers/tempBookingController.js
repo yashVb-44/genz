@@ -1,7 +1,54 @@
 const asyncHandler = require("express-async-handler");
 const TempBooking = require("../models/tempBooking");
 const Booking = require("../models/booking");
-const { handleCancelRide } = require("../utils/rider");
+const { handleCancelRide, handleDriverArrived, handleCompleteRide, handleStartRide } = require("../utils/rider");
+
+// 🟢 Driver Arrived at Pickup Location
+exports.driverArrived = asyncHandler(async (req, res) => {
+    try {
+        const { id } = req.user;
+        const { tempBookingId } = req.body;
+
+        if (!tempBookingId) {
+            return res.status(400).json({ message: "Missing tempBookingId", type: "error" });
+        }
+
+        const tempBooking = await TempBooking.findById(tempBookingId);
+
+        if (!tempBooking || tempBooking.status !== "accepted") { // ✅ Can only move from "accepted" → "arrived"
+            return res.status(400).json({ message: "Ride must be accepted before arriving", type: "error" });
+        }
+
+        if (tempBooking.driver.toString() !== id) {
+            return res.status(403).json({ message: "Unauthorized", type: "error" });
+        }
+
+        // ✅ Update status to "arrived"
+        tempBooking.status = "arrived";
+        tempBooking.arrivedTime = new Date();
+        await tempBooking.save();
+
+        // 🔔 Notify user via WebSocket or FCM
+        const io = req.app.get("io");
+        await handleDriverArrived(io, {
+            tempBookingId: tempBooking?._id.toString(), // ✅ tempBooking._id
+            driverId: tempBooking.driver ? tempBooking.driver._id.toString() : null,
+            userId: tempBooking.user ? tempBooking.user._id.toString() : null,
+        });
+
+        return res.status(200).json({
+            message: "Driver arrival confirmed",
+            type: "success",
+            tempBooking,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: "Failed to confirm arrival",
+            error: error.message,
+            type: "error",
+        });
+    }
+});
 
 // 🟢 Start the ride (Pickup)
 exports.startRide = asyncHandler(async (req, res) => {
@@ -15,8 +62,8 @@ exports.startRide = asyncHandler(async (req, res) => {
 
         const tempBooking = await TempBooking.findById(tempBookingId);
 
-        if (!tempBooking || tempBooking.status !== "accepted") {
-            return res.status(400).json({ message: "Ride can't be started", type: "error" });
+        if (!tempBooking || tempBooking.status !== "arrived") {
+            return res.status(400).json({ message: "Ride can't be started before arrival", type: "error" });
         }
 
         // 🛑 Verify OTP before starting the ride
@@ -31,6 +78,14 @@ exports.startRide = asyncHandler(async (req, res) => {
         tempBooking.status = "started";
         tempBooking.pickupTime = new Date();
         await tempBooking.save();
+
+        // 🔔 Notify user via WebSocket or FCM
+        const io = req.app.get("io");
+        await handleStartRide(io, {
+            tempBookingId: tempBooking?._id.toString(), // ✅ tempBooking._id
+            driverId: tempBooking.driver ? tempBooking.driver._id.toString() : null,
+            userId: tempBooking.user ? tempBooking.user._id.toString() : null,
+        });
 
         return res.status(200).json({
             message: "Ride started successfully",
@@ -77,6 +132,15 @@ exports.completeRide = asyncHandler(async (req, res) => {
 
         await booking.save();
         await TempBooking.findByIdAndDelete(tempBookingId);
+
+        // 🔔 Notify user via WebSocket or FCM
+        const io = req.app.get("io");
+        await handleCompleteRide(io, {
+            bookingId: booking?._id.toString(), // ✅ booking._id
+            driverId: booking.driver ? booking.driver._id.toString() : null,
+            userId: booking.user ? booking.user._id.toString() : null,
+            fare: booking.totalFare
+        });
 
         return res.status(200).json({
             message: "Ride completed successfully",
