@@ -201,7 +201,7 @@ exports.handleCancelRide = async (io, data) => {
         if (driverId && activeDrivers.has(driverId) && canceledBy === "user") {
             const driverData = activeDrivers.get(driverId); // Get the driver data object
             if (driverData && driverData.socketId) {
-                io.to(driverData.socketId).emit("rideCanceled", notificationData);
+                io.of("/drivers").to(driverData.socketId).emit("rideCanceled", notificationData);
             } else {
                 console.log(`❌ No valid socket ID for driver ${driverId}`);
             }
@@ -211,7 +211,7 @@ exports.handleCancelRide = async (io, data) => {
         if (userId && activeRiders.has(userId) && canceledBy === "driver") {
             const userSocketId = activeRiders.get(userId); // Assuming activeRiders stores socketId directly
             if (userSocketId) {
-                io.to(userSocketId).emit("rideCanceled", notificationData);
+                io.of("/rides").to(userSocketId).emit("rideCanceled", notificationData);
             } else {
                 console.log(`❌ No valid socket ID for user ${userId}`);
             }
@@ -247,7 +247,7 @@ exports.handleDriverArrived = async (io, data) => {
             const userSocketId = activeRiders.get(userId); // activeUsers stores socketId directly
             console.log(`🚗 Notifying user ${userId} that driver ${driverId} has arrived ${userSocketId}`);
             if (userSocketId) {
-                io.to(userSocketId).emit("driverArrived", notificationData);
+                io.of("/rides").to(userSocketId).emit("driverArrived", notificationData);
             } else {
                 console.log(`❌ No valid socket ID for user ${userId}`);
             }
@@ -281,7 +281,7 @@ exports.handleStartRide = async (io, data) => {
         if (activeRiders.has(userId)) {
             const userSocketId = activeRiders.get(userId);
             if (userSocketId) {
-                io.to(userSocketId).emit("rideStarted", notificationData);
+                io.of("/rides").to(userSocketId).emit("rideStarted", notificationData);
             } else {
                 console.log(`❌ No valid socket ID for user ${userId}`);
             }
@@ -316,7 +316,7 @@ exports.handleCompleteRide = async (io, data) => {
         if (activeRiders.has(userId)) {
             const userSocketId = activeRiders.get(userId);
             if (userSocketId) {
-                io.to(userSocketId).emit("rideCompleted", notificationData);
+                io.of("/rides").to(userSocketId).emit("rideCompleted", notificationData);
             } else {
                 console.log(`❌ No valid socket ID for user ${userId}`);
             }
