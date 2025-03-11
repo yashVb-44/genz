@@ -208,8 +208,8 @@ exports.handleCancelRide = async (io, data) => {
         }
 
         // Send to user if driver cancels
-        if (userId && activeUsers.has(userId) && canceledBy === "driver") {
-            const userSocketId = activeUsers.get(userId); // Assuming activeUsers stores socketId directly
+        if (userId && activeRiders.has(userId) && canceledBy === "driver") {
+            const userSocketId = activeRiders.get(userId); // Assuming activeRiders stores socketId directly
             if (userSocketId) {
                 io.to(userSocketId).emit("rideCanceled", notificationData);
             } else {
@@ -243,8 +243,9 @@ exports.handleDriverArrived = async (io, data) => {
         };
 
         // Send notification to the user when the driver arrives
-        if (activeUsers.has(userId)) {
-            const userSocketId = activeUsers.get(userId); // activeUsers stores socketId directly
+        if (activeRiders.has(userId)) {
+            const userSocketId = activeRiders.get(userId); // activeUsers stores socketId directly
+            console.log(`🚗 Notifying user ${userId} that driver ${driverId} has arrived ${userSocketId}`);
             if (userSocketId) {
                 io.to(userSocketId).emit("driverArrived", notificationData);
             } else {
@@ -277,8 +278,8 @@ exports.handleStartRide = async (io, data) => {
         };
 
         // Send notification to the user when the ride starts
-        if (activeUsers.has(userId)) {
-            const userSocketId = activeUsers.get(userId);
+        if (activeRiders.has(userId)) {
+            const userSocketId = activeRiders.get(userId);
             if (userSocketId) {
                 io.to(userSocketId).emit("rideStarted", notificationData);
             } else {
@@ -312,8 +313,8 @@ exports.handleCompleteRide = async (io, data) => {
         };
 
         // Send notification to the user when the ride is completed
-        if (activeUsers.has(userId)) {
-            const userSocketId = activeUsers.get(userId);
+        if (activeRiders.has(userId)) {
+            const userSocketId = activeRiders.get(userId);
             if (userSocketId) {
                 io.to(userSocketId).emit("rideCompleted", notificationData);
             } else {

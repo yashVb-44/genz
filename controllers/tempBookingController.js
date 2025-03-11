@@ -35,7 +35,7 @@ exports.driverArrived = asyncHandler(async (req, res) => {
             driverId: tempBooking.driver ? tempBooking.driver._id.toString() : null,
             userId: tempBooking.user ? tempBooking.user._id.toString() : null,
         });
-
+ 
         return res.status(200).json({
             message: "Driver arrival confirmed",
             type: "success",
