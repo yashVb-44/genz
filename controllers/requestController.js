@@ -2,8 +2,9 @@ const asyncHandler = require("express-async-handler");
 const Request = require("../models/request");
 const TempBooking = require("../models/tempBooking");
 const Driver = require("../models/driver"); // Assuming you have a Driver model
+const Booking = require("../models/booking");
 const { getSocket } = require("../config/socket");
-const { handleNewRideRequest, handleAcceptRide, handleRejectRide } = require("../utils/rider");
+const { handleNewRideRequest, handleAcceptRide, handleRejectRide, handleCancelRideRequest } = require("../utils/rider");
 const haversine = require("haversine-distance");
 
 // 🟢 Create a new ride request
@@ -39,6 +40,96 @@ exports.createRideRequest = asyncHandler(async (req, res) => {
             message: "Failed to create ride request",
             error: error.message,
             type: "error",
+        });
+    }
+});
+
+// 🟢 Cancel a ride request
+exports.cancelRideRequest = asyncHandler(async (req, res) => {
+    try {
+        const { id, role } = req.user;
+        const { requestId, reason } = req.body;
+
+        if (!requestId) {
+            return res.status(400).json({
+                type: "error",
+                message: "Ride Request ID is required."
+            });
+        }
+
+        // Find the ride and populate user details
+        let request = await Request.findById(requestId).populate("user");
+        if (!requestId || !request) {
+            return res.status(404).json({
+                type: "error",
+                message: "Ride Request not found."
+            });
+        }
+
+        // 🚫 Prevent duplicate cancellation
+        if (request.status === "canceled") {
+            return res.status(400).json({
+                type: "error",
+                message: "This ride has already been canceled."
+            });
+        }
+
+        // 🚫 Ensure user exists before checking authorization
+        if (role === "user" && (!request.user || request.user._id.toString() !== id)) {
+            return res.status(403).json({
+                type: "error",
+                message: "You are not authorized to cancel this booking."
+            });
+        }
+
+        // ❌ Restriction: Cannot cancel after ride has started
+        if (request.status === "started") {
+            return res.status(400).json({
+                type: "error",
+                message: "Ride cannot be canceled after pickup."
+            });
+        }
+
+        if (request.status === "completed") {
+            return res.status(400).json({
+                type: "error",
+                message: "Ride is already completed and cannot be canceled."
+            });
+        }
+
+
+        const io = req.app.get("io");
+        await handleCancelRideRequest(io, { rideId: requestId });
+
+        // ✅ Store booking details with correct status
+        const booking = new Booking({
+            ...request.toObject(),
+            status: "canceled",
+            totalFare: request.estimatedFare,
+            cancelReason: reason || "",
+            cancelTime: new Date(),
+            canceledBy: role,
+            status: "canceled",
+        });
+
+        await booking.save();
+
+        // ✅ Delete the temp booking
+        await request.deleteOne();
+
+        res.status(200).json({
+            type: "success",
+            message: "Ride Request canceled successfully.",
+            bookingId: booking._id,
+            canceledBy: role,
+        });
+
+    } catch (error) {
+        console.error("❌ Error canceling ride:", error);
+        res.status(500).json({
+            type: "error",
+            message: "Error canceling ride.",
+            error: error.message
         });
     }
 });

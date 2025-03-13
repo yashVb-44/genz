@@ -3,6 +3,7 @@ const express = require('express');
 const { register, verifyOtp, sendOtp } = require('../controllers/authController');
 const { updateUserProfile, getUserProfile, getUserListWithMobileNo, addUserByDriver, getUsersForAdmin, deleteUser, deActiveUserAccount, deleteUserAccount } = require('../controllers/userController');
 const { authenticateAndAuthorize } = require('../middleware/authMiddleware');
+const { getUserBookings } = require('../controllers/bookingController');
 const router = express.Router();
 
 router.post('/register', register);
@@ -17,5 +18,5 @@ router.get('/details/:id', authenticateAndAuthorize(['user', 'admin']), getUserP
 router.delete('/byAdmin/:id', authenticateAndAuthorize(['admin']), deleteUser);
 router.post('/account/deActivate', authenticateAndAuthorize(['user']), deActiveUserAccount);
 router.delete('/account/delete', authenticateAndAuthorize(['user']), deleteUserAccount);
-
+router.get('/ride/bookings', authenticateAndAuthorize(['user']), getUserBookings);
 module.exports = router;

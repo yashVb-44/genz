@@ -173,6 +173,33 @@ exports.cleanExpiredRequests = async (io) => {
     await Request.deleteMany({ expiryTime: { $lt: now } });
 };
 
+exports.handleCancelRideRequest = async (io, data) => {
+    try {
+        const { rideId } = data;
+        // Notify other drivers to remove the ride request
+        if (activeRequests.has(rideId)) {
+            activeRequests.get(rideId).forEach((otherDriverId) => {
+                if (otherDriverId) {
+                    const driverData = activeDrivers.get(otherDriverId); // Get the object
+                    if (driverData && driverData.socketId) {
+                        console.log(`🚫 Emitting to socket ID: ${driverData.socketId}`);
+                        io.of("/drivers").to(driverData.socketId).emit("removeRideRequest", { rideId });
+                    } else {
+                        console.log(`🚫 No valid socket ID for driver ${otherDriverId}`);
+                    }
+                }
+            });
+
+            // Remove request from tracking after cancle by user
+            activeRequests.delete(rideId);
+        }
+        console.log(`✅ Ride request ${rideId} canceled by user`);
+    } catch (error) {
+        console.error("❌ Error in handleCancelRideRequest:", error);
+        return;
+    }
+};
+
 exports.handleCancelRide = async (io, data) => {
     try {
         const { bookingId, driverId, userId, canceledBy, reason, cancelTime } = data;

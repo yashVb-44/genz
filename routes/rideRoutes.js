@@ -1,7 +1,7 @@
 const express = require("express");
 const { authenticateAndAuthorize } = require("../middleware/authMiddleware");
 const { getEstimateFare } = require("../controllers/fareController");
-const { acceptRideRequest, createRideRequest, rejectRideRequest, getRideRequestsForDriver } = require("../controllers/requestController");
+const { acceptRideRequest, createRideRequest, rejectRideRequest, getRideRequestsForDriver, cancelRideRequest } = require("../controllers/requestController");
 const { startRide, completeRide, cancelRide, driverArrived } = require("../controllers/tempBookingController");
 
 const router = express.Router();
@@ -12,7 +12,7 @@ router.get("/estimate-fare", getEstimateFare);
 // 📌 Ride Requests
 router.post("/request", authenticateAndAuthorize(["user"]), createRideRequest);
 router.get("/requests", authenticateAndAuthorize(["driver"]), getRideRequestsForDriver);
-router.delete("/request/:id", authenticateAndAuthorize(["user"]), acceptRideRequest);
+router.post("/request/cancel", authenticateAndAuthorize(["user"]), cancelRideRequest);
 
 // 🚖 Temporary Bookings
 router.post("/accept", authenticateAndAuthorize(["driver"]), acceptRideRequest);

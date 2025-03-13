@@ -1,20 +1,51 @@
 const asyncHandler = require("express-async-handler");
 const Booking = require("../models/booking");
 
-// 🟢 Get all past bookings for a user
+// 🟢 Get user bookings with filters, pagination, and sorting
 exports.getUserBookings = asyncHandler(async (req, res) => {
     try {
-        const { userId } = req.params;
+        const { id: userId } = req.user;
+        const { status, startDate, endDate, page = 1, limit = 10, sort = "desc" } = req.query;
 
         if (!userId) {
             return res.status(400).json({ message: "Missing userId", type: "error" });
         }
 
-        const bookings = await Booking.find({ user: userId }).sort({ createdAt: -1 });
+        const query = { user: userId };
+
+        // Filter by status
+        if (status) {
+            query.status = status;
+        }
+
+        // Filter by date range
+        if (startDate && endDate) {
+            query.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
+        }
+
+        // Pagination
+        const pageNumber = parseInt(page, 10);
+        const pageSize = parseInt(limit, 10);
+        const skip = (pageNumber - 1) * pageSize;
+
+        // Sorting
+        const sortOrder = sort === "asc" ? 1 : -1;
+
+        // Fetch bookings with filters, pagination, and sorting
+        const bookings = await Booking.find(query)
+            .sort({ createdAt: sortOrder })
+            .skip(skip)
+            .limit(pageSize);
+
+        // Get total count (for pagination metadata)
+        const totalBookings = await Booking.countDocuments(query);
 
         return res.status(200).json({
             message: "User bookings fetched successfully",
             type: "success",
+            total: totalBookings,
+            totalPages: Math.ceil(totalBookings / pageSize),
+            currentPage: pageNumber,
             bookings,
         });
     } catch (error) {
@@ -26,20 +57,51 @@ exports.getUserBookings = asyncHandler(async (req, res) => {
     }
 });
 
-// 🟢 Get all past rides for a driver
+// 🟢 Get driver bookings with filters, pagination, and sorting
 exports.getDriverBookings = asyncHandler(async (req, res) => {
     try {
-        const { driverId } = req.params;
+        const { id: driverId } = req.user;
+        const { status, startDate, endDate, page = 1, limit = 10, sort = "desc" } = req.query;
 
         if (!driverId) {
             return res.status(400).json({ message: "Missing driverId", type: "error" });
         }
 
-        const bookings = await Booking.find({ driver: driverId }).sort({ createdAt: -1 });
+        const query = { driver: driverId };
+
+        // Filter by status
+        if (status) {
+            query.status = status;
+        }
+
+        // Filter by date range
+        if (startDate && endDate) {
+            query.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
+        }
+
+        // Pagination
+        const pageNumber = parseInt(page, 10);
+        const pageSize = parseInt(limit, 10);
+        const skip = (pageNumber - 1) * pageSize;
+
+        // Sorting
+        const sortOrder = sort === "asc" ? 1 : -1;
+
+        // Fetch bookings with filters, pagination, and sorting
+        const bookings = await Booking.find(query)
+            .sort({ createdAt: sortOrder })
+            .skip(skip)
+            .limit(pageSize);
+
+        // Get total count (for pagination metadata)
+        const totalBookings = await Booking.countDocuments(query);
 
         return res.status(200).json({
             message: "Driver bookings fetched successfully",
             type: "success",
+            total: totalBookings,
+            totalPages: Math.ceil(totalBookings / pageSize),
+            currentPage: pageNumber,
             bookings,
         });
     } catch (error) {
