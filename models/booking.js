@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const bookingSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    driver: { type: mongoose.Schema.Types.ObjectId, ref: "Driver", required: true },
+    driver: { type: mongoose.Schema.Types.ObjectId, ref: "Driver" },
     pickupLocation: { type: { latitude: Number, longitude: Number, address: String }, required: true },
     dropLocation: { type: { latitude: Number, longitude: Number, address: String }, required: true },
     totalFare: { type: Number, required: true },
@@ -10,7 +10,7 @@ const bookingSchema = new mongoose.Schema({
     paymentMethod: { type: String, required: true },
     status: { type: String, enum: ["completed", "canceled"], required: true },
     requestTime: { type: Date, required: true },
-    acceptTime: { type: Date, required: true },
+    acceptTime: { type: Date },
     arrivedTime: { type: Date }, // ✅ When driver arrives at pickup location
     pickupTime: { type: Date },
     dropTime: { type: Date }, // Null if canceled

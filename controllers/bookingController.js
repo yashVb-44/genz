@@ -33,6 +33,8 @@ exports.getUserBookings = asyncHandler(async (req, res) => {
 
         // Fetch bookings with filters, pagination, and sorting
         const bookings = await Booking.find(query)
+            .populate("driver", "name email mobileNo profileImage")
+            .populate("user", "name email mobileNo profileImage")
             .sort({ createdAt: sortOrder })
             .skip(skip)
             .limit(pageSize);
@@ -89,6 +91,8 @@ exports.getDriverBookings = asyncHandler(async (req, res) => {
 
         // Fetch bookings with filters, pagination, and sorting
         const bookings = await Booking.find(query)
+            .populate("driver", "name email mobileNo profileImage")
+            .populate("user", "name email mobileNo profileImage")
             .sort({ createdAt: sortOrder })
             .skip(skip)
             .limit(pageSize);
