@@ -1,7 +1,8 @@
 const asyncHandler = require("express-async-handler");
 const TempBooking = require("../models/tempBooking");
 const Booking = require("../models/booking");
-const { handleCancelRide, handleDriverArrived, handleCompleteRide, handleStartRide } = require("../utils/rider");
+const { handleCancelRide, handleCompleteRide, handleStartRide } = require("../utils/rider");
+const { handleDriverArrived } = require("../utils/driver");
 
 // 🟢 Driver Arrived at Pickup Location
 exports.driverArrived = asyncHandler(async (req, res) => {

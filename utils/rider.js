@@ -252,41 +252,6 @@ exports.handleCancelRide = async (io, data) => {
     }
 };
 
-exports.handleDriverArrived = async (io, data) => {
-    try {
-        const { tempBookingId, driverId, userId } = data;
-
-        if (!tempBookingId || !driverId || !userId) {
-            console.error("❌ Missing data in handleDriverArrived:", data);
-            return;
-        }
-
-        // 🔔 WebSocket Notification Data for User
-        let notificationData = {
-            type: "driverArrived",
-            message: "Your driver has arrived at the pickup location.",
-            tempBookingId,
-            driverId,
-        };
-
-        // Send notification to the user when the driver arrives
-        if (activeRiders.has(userId)) {
-            const userSocketId = activeRiders.get(userId); // activeUsers stores socketId directly
-            console.log(`🚗 Notifying user ${userId} that driver ${driverId} has arrived ${userSocketId}`);
-            if (userSocketId) {
-                io.of("/rides").to(userSocketId).emit("driverArrived", notificationData);
-            } else {
-                console.log(`❌ No valid socket ID for user ${userId}`);
-            }
-        }
-
-        console.log(`✅ Driver ${driverId} has arrived for tempBooking ${tempBookingId}`);
-
-    } catch (error) {
-        console.error("❌ Error in handleDriverArrived:", error);
-    }
-};
-
 exports.handleStartRide = async (io, data) => {
     try {
         const { tempBookingId, driverId, userId } = data;

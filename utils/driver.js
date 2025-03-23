@@ -1,5 +1,5 @@
-const driver = require("../models/driver");
 const Driver = require("../models/driver");
+const TempBooking = require("../models/tempBooking");
 const { activeRiders, activeDrivers, activeUsers, activeRequests } = require("./activeUsers");
 
 // ✅ Register Driver
@@ -57,6 +57,17 @@ exports.updateDriverLocation = async (io, data, socket) => {
         // Store in memory
         activeDrivers.set(driverId.toString(), { socketId: socket.id, latitude, longitude });
 
+        const driverOnGoingRide = await TempBooking.findOne({ driverId, status: "accepted" });
+        if (driverOnGoingRide) {
+            exports.getDriverLocationForActiveRide(io, {
+                rideId: driverOnGoingRide?._id.toString(),
+                userId: driverOnGoingRide?.user.toString(),
+                driverId,
+                latitude,
+                longitude
+            });
+        }
+
         // Broadcast updated location & availability to all clients
         io.emit("driverStatusUpdated", { driverId, latitude, longitude });
 
@@ -94,6 +105,73 @@ exports.getNearbyDrivers = async (io, data, socket) => {
     } catch (error) {
         console.error("❌ Error fetching nearby drivers:", error);
         socket.emit("error", { message: "Failed to fetch nearby drivers" });
+    }
+};
+
+// ✅ Handle Driver arrival at pickup location
+exports.handleDriverArrived = async (io, data) => {
+    try {
+        const { tempBookingId, driverId, userId } = data;
+
+        if (!tempBookingId || !driverId || !userId) {
+            console.error("❌ Missing data in handleDriverArrived:", data);
+            return;
+        }
+
+        // 🔔 WebSocket Notification Data for User
+        let notificationData = {
+            type: "driverArrived",
+            message: "Your driver has arrived at the pickup location.",
+            tempBookingId,
+            driverId,
+        };
+
+        // Send notification to the user when the driver arrives
+        if (activeRiders.has(userId)) {
+            const userSocketId = activeRiders.get(userId); // activeUsers stores socketId directly
+            console.log(`🚗 Notifying user ${userId} that driver ${driverId} has arrived ${userSocketId}`);
+            if (userSocketId) {
+                io.of("/rides").to(userSocketId).emit("driverArrived", notificationData);
+            } else {
+                console.log(`❌ No valid socket ID for user ${userId}`);
+            }
+        }
+
+        console.log(`✅ Driver ${driverId} has arrived for tempBooking ${tempBookingId}`);
+
+    } catch (error) {
+        console.error("❌ Error in handleDriverArrived:", error);
+    }
+};
+
+// ✅ Get Driver Location for Active Ride
+exports.getDriverLocationForActiveRide = async (io, data) => {
+    try {
+        const { userId, rideId, driverId, latitude, longitude } = data;
+
+        // Validate input
+        if (!rideId || !userId || !driverId || latitude === undefined || longitude === undefined) {
+            console.error("❌ Missing required fields in getDriverLocationForActiveRide");
+            return;
+        }
+
+        const userSocketId = activeRiders.get(userId);
+        if (userSocketId) {
+            console.log(`🚖 Notifying rider ${userSocketId} that driver ${driverId} updated location for ride: ${rideId}`);
+
+            io.of("/rides").to(userSocketId).emit("getDriverLocationForActiveRide", {
+                rideId,
+                userId,
+                driverId,
+                latitude,
+                longitude
+            });
+        } else {
+            console.warn(`⚠️ No active user found for ride ${rideId}`);
+        }
+
+    } catch (error) {
+        console.error("❌ Error sending driver location:", error);
     }
 };
 

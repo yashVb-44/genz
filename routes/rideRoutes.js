@@ -3,6 +3,7 @@ const { authenticateAndAuthorize } = require("../middleware/authMiddleware");
 const { getEstimateFare } = require("../controllers/fareController");
 const { acceptRideRequest, createRideRequest, rejectRideRequest, getRideRequestsForDriver, cancelRideRequest } = require("../controllers/requestController");
 const { startRide, completeRide, cancelRide, driverArrived } = require("../controllers/tempBookingController");
+const { handleGetDriverLocationForActiveRide } = require("../controllers/userController");
 
 const router = express.Router();
 
@@ -29,5 +30,8 @@ router.post("/cancel", authenticateAndAuthorize(["user", "driver"]), cancelRide)
 // 📜 Booking History
 // router.get("/bookings", authenticateAndAuthorize(["user", "driver", "admin"]), rideController.getBookings);
 // router.get("/booking/:id", authenticateAndAuthorize(["user", "driver", "admin"]), rideController.getBookingById);
+
+// driver lat long
+router.get("/driver/location/byUser", authenticateAndAuthorize(["user"]), handleGetDriverLocationForActiveRide);
 
 module.exports = router;

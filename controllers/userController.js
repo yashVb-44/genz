@@ -1,9 +1,11 @@
 const asyncHandler = require('express-async-handler');
 const User = require('../models/user');
+const TempBooking = require('../models/tempBooking');
 const upload = require('../config/mutler');
 const removeUnwantedImages = require('../utils/deletingFiles');
 const expressAsyncHandler = require('express-async-handler');
 const { generateImageUrls } = require('../utils/utils');
+const { getDriverLocationForActiveRide } = require('../utils/driver');
 
 // Get User Profile
 const getUserProfile = asyncHandler(async (req, res) => {
@@ -307,6 +309,47 @@ const deleteUserAccount = async (req, res) => {
     }
 }
 
+const handleGetDriverLocationForActiveRide = async (req, res) => {
+    try {
+        const { id: userId } = req.user;
+        const { rideId } = req.query;
+        const getActiveRideDetails = await TempBooking.findOne({
+            user: userId,
+            _id: rideId,
+            status: 'started',
+        }).populate('driver', 'currentLocation');
+
+        if (!getActiveRideDetails) {
+            return res.status(400).json({
+                type: 'error',
+                message: 'Ride is not started yet',
+            });
+        } else {
+            const io = req.app.get("io");
+            await getDriverLocationForActiveRide(io, {
+                rideId,
+                userId,
+                driverId: getActiveRideDetails?.driver?._id?.toString(),
+                latitude: getActiveRideDetails?.driver?.currentLocation?.coordinates[1],
+                longitude: getActiveRideDetails?.driver?.currentLocation?.coordinates[0],
+            });
+
+            return res.status(200).json({
+                type: 'success',
+                message: 'Driver location fetched successfully',
+                location: getActiveRideDetails.driver.currentLocation,
+            });
+        }
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            type: 'error',
+            message: 'Error fetching driver location',
+            error: error.message
+        });
+    }
+}
 
 module.exports = {
     getUserProfile,
@@ -316,5 +359,6 @@ module.exports = {
     getUsersForAdmin,
     deleteUser,
     deActiveUserAccount,
-    deleteUserAccount
+    deleteUserAccount,
+    handleGetDriverLocationForActiveRide
 };
