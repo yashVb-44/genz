@@ -351,6 +351,23 @@ const handleGetDriverLocationForActiveRide = async (req, res) => {
     }
 }
 
+const getAllUsersListForFilter = async (req, res) => {
+    try {
+        const users = await User.find().sort({ createdAt: -1 }).select('name mobileNo');
+        res.status(200).json({
+            type: 'success',
+            message: 'User list retrieved successfully',
+            users,
+        });
+    } catch (error) {
+        res.status(500).json({
+            type: 'error',
+            message: 'Error fetching user list',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     getUserProfile,
     updateUserProfile,
@@ -360,5 +377,6 @@ module.exports = {
     deleteUser,
     deActiveUserAccount,
     deleteUserAccount,
-    handleGetDriverLocationForActiveRide
+    handleGetDriverLocationForActiveRide,
+    getAllUsersListForFilter
 };

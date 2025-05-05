@@ -20,6 +20,7 @@ const fareSchema = new mongoose.Schema({
     peakHours: [{ start: Number, end: Number }], // Peak hour time slots (24hr format)
     city: { type: String },
     isActive: { type: Boolean, default: true },
+    isDeleted: { type: Boolean, default: false }, // Soft delete
 }, { timestamps: true });
 
 module.exports = mongoose.model("Fare", fareSchema);

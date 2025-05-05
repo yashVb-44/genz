@@ -104,6 +104,85 @@ exports.getFare = asyncHandler(async (req, res) => {
     }
 });
 
+exports.getFaresForAdmin = async (req, res) => {
+    try {
+        const { search, page = 1, limit = 10 } = req.query;
+
+        const pageNumber = parseInt(page) || 1;
+        const limitNumber = parseInt(limit) || 10;
+
+        // Build filter query
+        let filter = {};
+        if (search && search.trim() !== '') {
+            const regex = new RegExp(search.trim(), 'i');
+            filter.$or = [
+                { city: regex },
+            ];
+        }
+
+        const totalFares = await Fare.countDocuments(filter);
+
+        let fares = await Fare.find(filter)
+            .skip((pageNumber - 1) * limitNumber)
+            .limit(limitNumber)
+            .sort({ createdAt: -1 });
+
+        fares = fares.map((fare) => {
+            let vehicleTypeName = "";
+            if (fare.vehicleType === "0") {
+                vehicleTypeName = "moto"; // Fixed spelling
+            } else if (fare.vehicleType === "1") {
+                vehicleTypeName = "auto";
+            } else if (fare.vehicleType === "2") {
+                vehicleTypeName = "go";
+            } else if (fare.vehicleType === "3") {
+                vehicleTypeName = "premier";
+            }
+            return {
+                ...fare.toObject(), // Ensure we return a plain object
+                vehicleTypeName,
+            };
+        });
+
+
+        res.status(200).json({
+            type: 'success',
+            message: 'Fare list retrieved successfully',
+            totalFares,
+            totalPages: Math.ceil(totalFares / limitNumber),
+            currentPage: pageNumber,
+            fares,
+        });
+    } catch (error) {
+        console.error('Error fetching fares list:', error);
+        res.status(500).json({
+            type: 'error',
+            message: 'Error fetching fares list',
+            error: error.message,
+        });
+    }
+};
+
+exports.deleteFare = async (req, res) => {
+    try {
+        const fareId = req.params.id
+        let fare = await Fare.findById(fareId);
+        fare.isDeleted = true
+        await fare.save()
+
+        res.status(200).json({
+            type: 'success',
+            message: 'Fare deleted successfully',
+        });
+    } catch (error) {
+        res.status(500).json({
+            type: 'error',
+            message: 'Error for delete fare',
+            error: error.message
+        });
+    }
+}
+
 
 exports.getEstimateFare = asyncHandler(async (req, res) => {
     try {

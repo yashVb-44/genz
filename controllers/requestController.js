@@ -4,7 +4,7 @@ const TempBooking = require("../models/tempBooking");
 const Driver = require("../models/driver"); // Assuming you have a Driver model
 const Booking = require("../models/booking");
 const { getSocket } = require("../config/socket");
-const { handleNewRideRequest, handleAcceptRide, handleRejectRide, handleCancelRideRequest } = require("../utils/rider");
+const { handleNewRideRequest, handleAcceptRide, handleRejectRide, handleCancelRideRequest, createRideId } = require("../utils/rider");
 const haversine = require("haversine-distance");
 
 // 🟢 Create a new ride request
@@ -17,7 +17,9 @@ exports.createRideRequest = asyncHandler(async (req, res) => {
             return res.status(400).json({ message: "Missing required parameters", type: "error" });
         }
 
-        const request = new Request({ user: id, ...req.body });
+        const rideId = await createRideId(usrId); // ✅ Generate a unique ride ID
+
+        const request = new Request({ user: id, ...req.body, rideId });
         await request.save(); // ✅ Store request before emitting
         const io = req.app.get("io");
 

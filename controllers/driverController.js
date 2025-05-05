@@ -5,6 +5,8 @@ const geolib = require('geolib');
 const { default: mongoose } = require('mongoose');
 const { convertToAmPm, generateImageUrls, ganerateOneLineImageUrls, getDayName } = require('../utils/utils');
 const { activeDrivers } = require('../utils/activeUsers');
+const Vehicle = require('../models/vehicle');
+const Documents = require('../models/documents');
 // const { getDriverRatings } = require('../utils/rating');
 
 
@@ -297,6 +299,197 @@ const updateDriverStatus = async (req, res) => {
 };
 
 
+const getDriversForAdmin = async (req, res) => {
+    try {
+        const { search, page = 1, limit = 10 } = req.query; // Get search term, page, and limit from query parameters
+
+        // Ensure page and limit are valid integers
+        const pageNumber = parseInt(page) || 1;
+        const limitNumber = parseInt(limit) || 10;
+
+        // Build search query based on name, email, or mobile number
+        let searchQuery = {};
+        if (search && search.trim() !== '') {
+            const regex = new RegExp(search.trim(), 'i'); // Case-insensitive partial match
+            searchQuery = {
+                $or: [
+                    { name: regex },
+                    { email: regex },
+                    { mobileNo: regex }
+                ]
+            };
+        }
+
+        // Calculate total drivers matching the query
+        const totalDrivers = await Driver.countDocuments(searchQuery);
+
+        // Fetch paginated drivers from the database
+        let drivers = await Driver.find(searchQuery)
+            .skip((pageNumber - 1) * limitNumber)
+            .limit(limitNumber)
+            .sort({ createdAt: -1 }); // Sort by creation date, newest first
+
+        drivers = drivers.map((driver) => {
+            let vehicleTypeName = "";
+            if (driver.vehicleType === "0") {
+                vehicleTypeName = "moto"; // Fixed spelling
+            } else if (driver.vehicleType === "1") {
+                vehicleTypeName = "auto";
+            } else if (driver.vehicleType === "2") {
+                vehicleTypeName = "go";
+            } else if (driver.vehicleType === "3") {
+                vehicleTypeName = "premier";
+            }
+            return {
+                ...driver.toObject(), // Ensure we return a plain object
+                vehicleTypeName,
+                profileImage: ganerateOneLineImageUrls(driver.profileImage, req)
+            };
+        });
+
+        // drivers = drivers.map((driver) => generateImageUrls(driver.toObject(), req));
+
+        // Send response
+        res.status(200).json({
+            type: 'success',
+            message: 'Driver list retrieved successfully',
+            totalDrivers,
+            totalPages: Math.ceil(totalDrivers / limitNumber),
+            currentPage: pageNumber,
+            drivers,
+        });
+    } catch (error) {
+        res.status(500).json({
+            type: 'error',
+            message: 'Error fetching drivers list',
+            error: error.message
+        });
+    }
+};
+
+const deleteDriverByAdmin = async (req, res) => {
+    try {
+        const driverId = req.params.id
+        let driver = await Driver.findById(driverId);
+        driver.isDeleted = true
+        await driver.save()
+
+        res.status(200).json({
+            type: 'success',
+            message: 'Driver deleted successfully',
+        });
+    } catch (error) {
+        res.status(500).json({
+            type: 'error',
+            message: 'Error for delete driver',
+            error: error.message
+        });
+    }
+}
+
+const getAllDriversListForFilter = async (req, res) => {
+    try {
+        const drivers = await Driver.find().sort({ createdAt: -1 }).select('name mobileNo');
+        res.status(200).json({
+            type: 'success',
+            message: 'Driver list retrieved successfully',
+            drivers,
+        });
+    } catch (error) {
+        res.status(500).json({
+            type: 'error',
+            message: 'Error fetching driver list',
+            error: error.message
+        });
+    }
+};
+
+const singleDriverDetailsForAdmin = asyncHandler(async (req, res) => {
+    try {
+        const { driverId } = req.body;
+
+        // Ensure necessary parameters are provided
+        if (!driverId) {
+            return res.status(400).json({
+                message: "Please provide driverId",
+                type: "error",
+            });
+        }
+        // Find the vehicle for the driver and populate relevant data
+        const vehicle = await Vehicle.findOne({ driver: driverId })
+            .populate({
+                path: "driver",
+            })
+            .lean();
+
+        if (!vehicle) {
+            return res.status(404).json({
+                message: "vehicle not found",
+                type: "error",
+            });
+        }
+
+        // Fetch gallery images
+        const documents = await Documents.findOne({ driver: driverId }).lean();
+        // const ratings = await getDriverRatings({ driverId: garage.driver._id });
+        // Prepare the response object
+        const response = {
+            basicDetails: {
+                documents: documents
+                    ? {
+                        drivingLicenseFrontImage: ganerateOneLineImageUrls(documents.drivingLicenseFrontImage, req),
+                        aadharCardFrontImage: ganerateOneLineImageUrls(
+                            documents.aadharCardFrontImage,
+                            req
+                        ),
+                        aadharCardBackImage: ganerateOneLineImageUrls(
+                            documents.aadharCardBackImage,
+                            req
+                        ),
+                        panCardImage: ganerateOneLineImageUrls(
+                            documents.panCardImage,
+                            req
+                        ),
+                    }
+                    : {},
+            },
+            details: {
+                driverName: garage.driver.name,
+                mobileNo: garage.driver.mobile,
+                yearsOfGarage: garage.yearsOfGarage,
+                vehicleTypeHandle: garage.vehicalTypeHandle,
+                address: garage.address,
+                lat: garage.lat,
+                lng: garage.lng,
+                gstNo: garage.gstNo,
+                timeSchedule: garage.weeklyTimings,
+                privacyPolicy: garage.privacyPolicy,
+                companies: garage.company,
+            },
+            services: {
+                shopServices: services,
+                additionalServices: additionalService,
+                emergencyService: emergencyService,
+            },
+            bankName: garage.bankName,
+            ifsc: garage.ifsc,
+            accountNumber: garage.accountNumber,
+            ratings,
+        };
+        // Return the driver details
+        return res.status(200).json({
+            driver: response,
+            type: "success",
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: "Failed to get driver details",
+            error: error.message,
+            type: "error",
+        });
+    }
+});
+
 
 module.exports = {
     getDriverProfile,
@@ -304,5 +497,9 @@ module.exports = {
     driverDetails,
     deleteDriverAccount,
     deActiveDriverAccount,
-    updateDriverStatus
+    updateDriverStatus,
+    getDriversForAdmin,
+    deleteDriverByAdmin,
+    getAllDriversListForFilter,
+    singleDriverDetailsForAdmin
 };

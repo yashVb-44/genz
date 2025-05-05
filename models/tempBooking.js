@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const tempBookingSchema = new mongoose.Schema({
+    rideId: { type: String, required: true, unique: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     driver: { type: mongoose.Schema.Types.ObjectId, ref: "Driver", required: true },
     pickupLocation: { type: { latitude: Number, longitude: Number, address: String }, required: true },

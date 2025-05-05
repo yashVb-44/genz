@@ -6,7 +6,7 @@ const generateImageUrls = (document, req) => {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
 
     // Process only the fields that are image URLs
-    const imageFields = ['ownerImage', 'vehicleRepairImage', 'insideImage', 'outsideImage', 'image', "dentImage", "afterServiceImage", "beforeServiceImage", "bannerImage", "profileImage"];
+    const imageFields = ['drivingLicenseFrontImage', 'panCardImage', 'aadharCardBackImage', 'aadharCardFrontImage', 'image', "registrationCertificateImage", "pollutionCertificateImage", "vehicleInsuranceIamge", "bannerImage", "profileImage"];
     imageFields.forEach((field) => {
         if (document[field]) {
             document[field] = `${baseUrl}/${document[field].replace(/\\/g, '/')}`; // Handle both Unix and Windows paths
@@ -37,9 +37,10 @@ function convertToAmPm(time) {
 }
 
 function getDayName(dayIndex) {
-    const days = [ 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday','Sunday'];
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     return days[dayIndex];
 }
 
+const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
 
-module.exports = { generateImageUrls, ganerateOneLineImageUrls, convertToAmPm, getDayName };
+module.exports = { generateImageUrls, ganerateOneLineImageUrls, convertToAmPm, getDayName, generateOTP };

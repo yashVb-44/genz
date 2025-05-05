@@ -36,6 +36,13 @@ const DriverSchema = new mongoose.Schema(
         isAvailableForRide: { type: Boolean, default: true }, // True = Available, False = Busy/offline
         isOnline: { type: Boolean, default: true }, // True = Online, False = Offline
         isOnRide: { type: Boolean, default: false }, // True = On Ride, False = Free
+        bankDetails: {
+            accountHolderName: { type: String },
+            accountNumber: { type: String },
+            ifscCode: { type: String },
+            bankName: { type: String },
+            branchName: { type: String },
+        }
     },
     {
         timestamps: true,

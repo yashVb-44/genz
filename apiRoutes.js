@@ -10,8 +10,13 @@ const surgeRoutes = require('./routes/surgeRoutes');
 const rideRoutes = require('./routes/rideRoutes');
 const tempBookingRoutes = require('./routes/tempBookingRoutes');
 const homePageRoutes = require('./routes/homePageRoutes');
+const bookingRoutes = require('./routes/bookingRoutes');
 // const walletRoutes = require('./routes/walletRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const filterRoutes = require('./routes/filterRoutes');
+const settingRoutes = require('./routes/settingRoutes');
+const vehicleRoutes = require('./routes/vehicleRoutes');
+const documentRoutes = require('./routes/documentRoutes');
 // // const walletRoutes = require('./routes/coin');
 // const settingRoutes = require('./routes/settingRoutes');
 // const biddingSessionRoutes = require('./routes/biddingSessionRoutes');
@@ -26,6 +31,12 @@ router.use("/surge", surgeRoutes)
 router.use("/ride", rideRoutes)
 router.use("/temp", tempBookingRoutes)
 router.use("/home", homePageRoutes)
+router.use("/booking", bookingRoutes)
+router.use("/filter", filterRoutes);
+router.use("/settings", settingRoutes);
+router.use("/vehicle", vehicleRoutes);
+router.use("/document", documentRoutes);
+router.use("/homePage", homePageRoutes);
 // router.use("/wallet", walletRoutes)
 // router.use("/settings", settingRoutes)
 // router.use("/bidding/session", biddingSessionRoutes)

@@ -1,56 +1,42 @@
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
-// Configure storage for images with dynamic subfolder support
+// Configure storage with dynamic subfolder and auto-create support
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        let folder = 'uploads/';
-        // Set different subfolders based on the type of image
-        if (file.fieldname === 'sessionImage') {
-            folder += 'sessionImages/';
-        } else if (file.fieldname === 'vehicleRepairImage') {
-            folder += 'vehicleRepairImages/';
-        } else if (file.fieldname === 'insideImage') {
-            folder += 'insideImages/';
-        } else if (file.fieldname === 'outsideImage') {
-            folder += 'outsideImages/';
-        } else if (file.fieldname === 'profileImage') {
-            folder += 'profileImages/'
-        } else if (file.fieldname === 'myVehicleImage') {
-            folder += 'myVehicleImages/'
-        } else if (file.fieldname === 'beforeServiceImage') {
-            folder += 'beforeServiceImages/'
-        } else if (file.fieldname === 'afterServiceImage') {
-            folder += 'afterServiceImages/'
-        } else if (file.fieldname === 'dentImage') {
-            folder += 'dentImages/'
-        } else if (file.fieldname === 'bannerImage') {
-            folder += 'bannerImages/'
-        }
+        const baseFolder = 'uploads';
+        const subFolder = `${file.fieldname}s`; // e.g., profileImage => profileImages
+        const fullPath = path.join(baseFolder, subFolder);
+        console.log(`Full path: ${fullPath}`);
+        // Create folder if it doesn't exist
+        fs.mkdirSync(fullPath, { recursive: true });
 
-        cb(null, folder); // Set the destination folder for the specific image category
+        cb(null, fullPath);
     },
     filename: function (req, file, cb) {
-        cb(null, `${Date.now()}-${file.originalname}`); // Set the file name to be unique
-    },
+        const uniqueName = `${Date.now()}-${file.originalname}`;
+        cb(null, uniqueName);
+    }
 });
 
 // Filter file type
 const fileFilter = (req, file, cb) => {
-    const allowedFileTypes = /jpeg|jpg|png/;
-    const extname = allowedFileTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedFileTypes.test(file.mimetype);
+    const allowedTypes = /jpeg|jpg|png/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+
     if (extname && mimetype) {
         cb(null, true);
     } else {
-        cb(new Error('Only images are allowed'));
+        cb(new Error('Only .jpeg, .jpg, and .png image formats are allowed'));
     }
 };
 
 const upload = multer({
-    storage: storage,
-    limits: { fileSize: 1024 * 1024 * 50 }, // Limit file size to 50MB
-    fileFilter: fileFilter,
+    storage,
+    limits: { fileSize: 1024 * 1024 * 50 }, // 50MB max
+    fileFilter,
 });
 
 module.exports = upload;

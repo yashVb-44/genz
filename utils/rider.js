@@ -2,6 +2,17 @@ const Driver = require("../models/driver");
 const Request = require("../models/request");
 const { activeRiders, activeDrivers, activeUsers, activeRequests } = require("./activeUsers");
 
+exports.createRideId = async (userId) => {
+    try {
+        // Generate a unique ride ID (e.g., UUID or timestamp-based)
+        const rideId = `ride_${Date.now()}_${userId}`;
+        return rideId;
+    } catch (error) {
+        console.error("❌ Error in createRideId:", error);
+        throw new Error("Failed to create ride ID");
+    }
+}
+
 exports.handleNewRideRequest = async (io, data, socket) => {
     try {
         const { userId, latitude, longitude, request } = data;
